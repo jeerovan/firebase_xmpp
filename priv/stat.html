@@ -1,0 +1,99 @@
+<html>
+  <head>
+    <title>Stats</title>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  </head>
+  <body onload="init();">
+    <div id="fcm_manager">
+      <h1>FCM Manager</h1>
+      <h3>Pool : <span class="pool"></span></h3>
+      <h3>Load : <span class="load"></span></h3>
+      <h3>OutMessages : <span class="pending"></span></h3>
+    </div>
+    <hr />
+    <div id="message_receiver_manager">
+      <h1>Receiver Manager</h1>
+      <h3>Pool : <span class="receivers"></span></h3>
+      <h3>Load : <span class="load"></span></h3>
+      <h3>InMessages : <span class="pending"></span></h3>
+    </div>
+    <script src="/static/js/base.js"></script>
+    <script>
+      var ping_timer;
+      var websocket;
+      var receivers = new Object();
+      var senders = new Object();
+      var fcmps = new Object();
+      function init(){
+        ConnectSocket();
+      }
+      function SetPinger(){
+        ping_timer = setInterval(function(){
+                                        SendJSON(JSON.stringify({mt:0}));
+                                      },1000);
+      }
+      function UnSetPinger(){
+        clearInterval(ping_timer);
+      }
+      function ConnectSocket(){
+        var protocol = location.protocol;
+        var webprotocol = null;
+        if(protocol == 'https:') {
+          webprotocol = 'wss';
+        }
+        else {
+          webprotocol = 'ws';
+        }
+        var wsUri = webprotocol + '://'+location.host+'/ws';
+        ConnectWebSocket(wsUri);
+      }
+      function ConnectWebSocket(wsUri) {
+        websocket = new WebSocket(wsUri);
+        websocket.onopen = function(evt) { onOpen(evt) };
+        websocket.onclose = function(evt) { onClose(evt) };
+        websocket.onmessage = function(evt) { onMessage(evt) };
+        websocket.onerror = function(evt) { onError(evt) };
+      }
+      function onOpen(evt) {
+        SetPinger();
+      }
+      function onClose(evt) {
+        UnSetPinger();
+        websocket = null;
+      }
+      function onError(evt) {
+        console.log(evt);
+      }
+      function onMessage(evt) {
+        var data = JSON.parse(evt.data);
+        var mt = data.mt;
+        if(mt == 10){
+          var tasks = data.tasks;
+          var pid = data.pid;
+          fcmps[pid] = tasks;
+          Z("fcm_manager").Y("load")[0].innerText = Object.keys(fcmps).map(function(key){return fcmps[key];}).join("|");
+        }
+        else if(mt == 11){
+          Z("fcm_manager").Y("pool")[0].innerText = data.pool;
+          Z("fcm_manager").Y("pending")[0].innerText = data.pending;
+        }
+        else if(mt == 12){
+          Z("message_receiver_manager").Y("receivers")[0].innerText = data.receivers;
+          Z("message_receiver_manager").Y("pending")[0].innerText = data.pending;
+        }
+        else if(mt == 13){
+          var pid = data.pid;
+          var mql = data.mql;
+          receivers[pid] = mql;
+          Z("message_receiver_manager").Y("load")[0].innerText = Object.keys(receivers).map(function(key){return receivers[key];}).join("|");
+        }
+      }
+      function SendJSON(JSON){
+        if (websocket){
+          websocket.send(JSON);
+        }
+      }
+    </script>
+  </body>
+</html>
