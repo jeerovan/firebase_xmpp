@@ -82,5 +82,5 @@ sha256_mac(K, S) ->
     end.
 delete_media_file(Id) ->
   Bucket = list_to_binary(filesettings:get(s3_bucket,"")),
-  Cmd = "aws s3 rm s3://" ++ Bucket ++ "/" ++ binary_to_list(Id),
-  os:cmd(Cmd).
+  Cmd = "aws s3 rm s3://" ++ binary_to_list(Bucket) ++ "/" ++ binary_to_list(Id),
+  _ = spawn(os,cmd,[Cmd]).
