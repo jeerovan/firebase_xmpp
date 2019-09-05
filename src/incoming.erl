@@ -1,6 +1,27 @@
 -module(incoming).
 -include("constants.hrl").
--export([handle/3]).
+-export([data/2]).
+
+data(FcmId,JsonData) ->
+  case jsx:is_json(JsonData) of
+    true ->
+      Json = jsx:decode(JsonData,[return_maps]),
+      case maps:get(?messageType,Json,<<>>) of
+        <<>> ->
+          applog:error(?MODULE,"Received Message W/O Type:~p~n",[Json]);
+        Type ->
+          case maps:get(?userId,Json,<<>>) of
+            <<>> ->
+              ok;
+            UserId ->
+              functions:update_last_seen_at(UserId)
+          end,
+          applog:verbose('IN',"~p~n",[Json]),
+          handle(Type,FcmId,Json)
+      end;
+    false ->
+      applog:error(?MODULE,"Received Invalid Json From ~p~n",[FcmId])
+  end.
 
 handle(?getAppSettings,FcmId,Json) ->
   case maps:get(?userId,Json,<<>>) of

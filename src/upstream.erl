@@ -2,6 +2,8 @@
 -include("constants.hrl").
 -export([handler/1]).
 
+%---- Process to handle incoming data from mobile ----
+
 handler(State) ->
   receive
     start ->
@@ -27,25 +29,10 @@ handler(State) ->
             State
         end,
       #{<<"from">> := FcmId,<<"data">> := #{<<"data">> := JsonData}} = AllData,
-      case jsx:is_json(JsonData) of
-        true ->
-          Json = jsx:decode(JsonData,[return_maps]),
-          case maps:get(?messageType,Json,<<>>) of
-            <<>> ->
-              applog:error(?MODULE,"Received Message W/O Type:~p~n",[Json]);                                                                
-            Type ->
-              case maps:get(?userId,Json,<<>>) of
-                <<>> ->
-                  ok;
-                UserId ->
-                  functions:update_last_seen_at(UserId)
-              end,
-              applog:verbose('IN',"~p~n",[Json]),
-              incoming:handle(Type,FcmId,Json)
-          end;
-        false ->
-          applog:error(?MODULE,"Received Invalid Json From ~p~n",[FcmId])
-      end,
+      %---- JsonData Is Raw Data To Be Processed 
+      %---- I Send It To Incoming Module
+      %---- You May Process It Differently ------
+      incoming:data(FcmId,JsonData),
       handler(NewState);
     send_stats ->
       {message_queue_len,Mqlen} = process_info(self(),message_queue_len),

@@ -1,6 +1,8 @@
 -module(fcm_manager).
 -behaviour(gen_server).
 
+%---- Manage Fcm Processes ----
+
 %% API.
 -export([start_link/0]).
 %------- CALLS -------
@@ -89,6 +91,7 @@ update_registration_id(OldFcmId,NewFcmId) ->
     [{OldFcmId,Counters}] ->
       ets:insert(fcm_id_outgoing_counters,{NewFcmId,Counters})
   end,
+  %--- Change Following Function To Update Fcm Id As Per Requirement ------
   functions:update_fcm_id(OldFcmId,NewFcmId).
 
 set_device_unregistered(FcmId) ->
@@ -106,6 +109,7 @@ set_device_unregistered(FcmId) ->
     [{FcmId,Counters}] ->
       [ets:delete(outgoing_message,Counter) || Counter <- Counters]
   end,
+  %--- Change Following Function To Mark FcmId Unregistered As Per Requirement ------
   functions:device_unregistered(FcmId).
 
 remove_unsent_messages(0) ->

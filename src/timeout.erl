@@ -1,6 +1,9 @@
 -module(timeout).
 -behaviour(gen_statem).
 
+%--- Get Any Available Fcm Process From Fcm Manager And
+%--- Send Messages To Mobile At A Definite Time ---
+
 %% API.
 -export([start_link/0]).
 -export([append_fcm_id/1]).

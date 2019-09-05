@@ -1,6 +1,8 @@
 -module(applog).
 -behaviour(gen_server).
 
+%--- Just A Logging Server ------
+
 %% API.
 -export([start_link/0]).
 -export([info/3,verbose/3,debug/3,error/3]).
@@ -16,8 +18,7 @@
 -record(state, {log_info,
                 log_verbose,
                 log_debug,
-                log_error,
-                save_logs
+                log_error
                }).
 
 %% API.
@@ -51,12 +52,10 @@ init([]) ->
   Info = filesettings:get(log_info,true),
   Debug = filesettings:get(log_debug,true),
   Error = filesettings:get(log_error,true),
-  Save = filesettings:get(save_logs,false),
 	{ok, #state{log_info = Info,
               log_verbose = Verbose,
               log_debug = Debug,
-              log_error = Error,
-              save_logs = Save}}.
+              log_error = Error}}.
 
 handle_call(_Request, _From, State) ->
 	{reply, ignored, State}.
@@ -99,8 +98,6 @@ handle_cast(_Msg, State) ->
 handle_info({application_variable_update,Name,Value},State) ->
   NewState =
     case Name of
-      save_logs ->
-        State#state{save_logs = Value};
       log_info ->
         State#state{log_info = Value};
       log_verbose ->

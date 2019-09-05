@@ -4,6 +4,8 @@
          add_upstream/1,
          remove_upstream/1]).
 
+%--- Manager to handle upstream processes to balance load --
+
 %% API.
 -export([start_link/0]).
 
