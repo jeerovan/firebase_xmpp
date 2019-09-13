@@ -2,25 +2,19 @@
 -include("constants.hrl").
 -export([data/2]).
 
-data(FcmId,JsonData) ->
-  case jsx:is_json(JsonData) of
-    true ->
-      Json = jsx:decode(JsonData,[return_maps]),
-      case maps:get(?messageType,Json,<<>>) of
+data(FcmId,Json) ->
+  case maps:get(?messageType,Json,<<>>) of
+    <<>> ->
+      applog:error(?MODULE,"Received Message W/O Type:~p~n",[Json]);
+    Type ->
+      case maps:get(?userId,Json,<<>>) of
         <<>> ->
-          applog:error(?MODULE,"Received Message W/O Type:~p~n",[Json]);
-        Type ->
-          case maps:get(?userId,Json,<<>>) of
-            <<>> ->
-              ok;
-            UserId ->
-              functions:update_last_seen_at(UserId)
-          end,
-          applog:verbose('IN',"~p~n",[Json]),
-          handle(Type,FcmId,Json)
-      end;
-    false ->
-      applog:error(?MODULE,"Received Invalid Json From ~p~n",[FcmId])
+          ok;
+        UserId ->
+          functions:update_last_seen_at(UserId)
+      end,
+      applog:verbose(?MODULE,"~p~n",[Json]),
+      handle(Type,FcmId,Json)
   end.
 
 handle(?getAppSettings,FcmId,Json) ->
@@ -36,7 +30,7 @@ handle(?getAppSettings,FcmId,Json) ->
                ?s3Bucket => list_to_binary(filesettings:get(s3_bucket,"kaarsstest")),
                ?s3ParamsExpirySeconds => filesettings:get(s3_params_expiry_seconds,60)
               },
-  downstream:create(FcmId,Settings);
+  tcp_socket:send_fcm(FcmId,Settings);
 handle(?userSignUp,FcmId,Json) ->
   Username = maps:get(?userName,Json,<<>>),
   Password = maps:get(?passWord,Json,<<>>),
@@ -47,11 +41,11 @@ handle(?userSignUp,FcmId,Json) ->
                  ?responseStatus => ?errorInResponse,
                  ?errorField => ?generalError,
                  ?responseError => ?parametersMissing},
-      downstream:create(FcmId,Error);
+      tcp_socket:send_fcm(FcmId,Error);
     true ->
       %------ Get User State With Id And Other Params ------
       Response = functions:sign_up(Username,Password,Country,FcmId),
-      downstream:create(FcmId,Response)
+      tcp_socket:send_fcm(FcmId,Response)
   end;
 handle(?userSignIn,FcmId,Json) ->
   Username = maps:get(?userName,Json,<<>>),
@@ -62,10 +56,10 @@ handle(?userSignIn,FcmId,Json) ->
                  ?responseStatus => ?errorInResponse,
                  ?errorField => ?generalError,
                  ?responseError => ?parametersMissing},
-      downstream:create(FcmId,Error);
+      tcp_socket:send_fcm(FcmId,Error);
     true ->
       Response = functions:sign_in(Username,Password,FcmId),
-      downstream:create(FcmId,Response)
+      tcp_socket:send_fcm(FcmId,Response)
   end;
 handle(?setSecurityAnswers,FcmId,Json) ->
   UserId = maps:get(?userId,Json,<<>>),
@@ -103,10 +97,10 @@ handle(?verifySecurityAnswers,FcmId,Json) ->
       Error = #{ ?messageType => ?verifySecurityAnswers,
                  ?responseStatus => ?errorInResponse,
                  ?responseError => ?parametersMissing},
-      downstream:create(FcmId,Error);
+      tcp_socket:send_fcm(FcmId,Error);
     true ->
       Response = functions:verify_security_questions(FcmId,UserName,One,Two,Three,Four),
-      downstream:create(FcmId,Response)
+      tcp_socket:send_fcm(FcmId,Response)
   end;
 handle(?getS3ParamsForDp,FcmId,Json) ->
   case maps:get(?userId,Json,<<>>)  of
@@ -114,10 +108,10 @@ handle(?getS3ParamsForDp,FcmId,Json) ->
       Error = #{ ?messageType => ?getS3ParamsForDp,
                  ?responseStatus => ?errorInResponse,
                  ?responseError => ?parametersMissing},
-      downstream:create(FcmId,Error);
+      tcp_socket:send_fcm(FcmId,Error);
     UserId ->
       Response = functions:get_s3_params_for_dp(UserId,FcmId),
-      downstream:create(FcmId,Response)
+      tcp_socket:send_fcm(FcmId,Response)
   end;
 handle(?updateFcmId,FcmId,Json) ->
   UserId = maps:get(?userId,Json,<<>>),
@@ -232,7 +226,7 @@ handle(?sendChatMessage,FcmId,Json) ->
                              ?chatMessageId => ChatMessageId,
                              ?taskId => TaskId,
                              ?timeStamp => time_util:utc_seconds()},
-      downstream:create(FcmId,ChatMessageSentAt),
+      tcp_socket:send_fcm(FcmId,ChatMessageSentAt),
       functions:send_chat_message(FromUserId,
                                   ToUserId,
                                   ChatMessageId,
@@ -263,7 +257,7 @@ handle(?getS3ParamsForMedia,FcmId,Json) ->
       ok;
     true ->
       Response = functions:get_s3_params_for_media(FromUserId,ChatMessageId,FcmId),
-      downstream:create(FcmId,Response)
+      tcp_socket:send_fcm(FcmId,Response)
   end;
 handle(?messageDownloaded,FcmId,Json) ->
   ChatMessageId = maps:get(?chatMessageId,Json,<<>>),

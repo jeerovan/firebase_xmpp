@@ -46,6 +46,7 @@ error(Module,Message,Args) ->
 %% gen_server.
 
 init([]) ->
+  process_flag(trap_exit, true),
   %------- Add It To Gproc -------
   gproc:reg({p,l,processes}),
   Verbose = filesettings:get(log_verbose,true),
@@ -114,7 +115,7 @@ handle_info(_Info, State) ->
 	{noreply, State}.
 
 terminate(_Reason, _State) ->
-	ok.
+  data_utils:dump_table(filesetting,"../../settings.txt").
 
 code_change(_OldVsn, State, _Extra) ->
 	{ok, State}.

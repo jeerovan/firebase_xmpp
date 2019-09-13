@@ -42,7 +42,7 @@ check_settings() ->
   _ = filesettings:get(s3_host,provide_s3_host_in_double_quotes).
 send_fcm(FcmId,
          DataMap) ->
-  downstream:create(FcmId,DataMap).
+  tcp_socket:send_fcm(FcmId,DataMap).
 send_fcm_to_all(DataMap) ->
   [send_fcm(User#user.fcm_id,DataMap) || User <- db:read_table(user)].
 
@@ -325,7 +325,7 @@ send_updated_profiles(FcmId,ProfilesData) ->
 send_updated_profiles([],[],_FcmId) ->
   ok;
 send_updated_profiles([],Acc,FcmId) ->
-  downstream:create(FcmId,#{?messageType => ?updateProfiles,
+  tcp_socket:send_fcm(FcmId,#{?messageType => ?updateProfiles,
                             ?profilesData => Acc});
 send_updated_profiles([Item|Items],Acc,FcmId) ->
   [UserId,LuaBin] = binary:split(Item,<<"|">>,[global]),
@@ -348,7 +348,7 @@ send_updated_profiles([Item|Items],Acc,FcmId) ->
   {NewItems,NewAcc} =
     case byte_size(jsx:encode(Acc)) > 3950 of
       true ->
-        downstream:create(FcmId,
+        tcp_socket:send_fcm(FcmId,
                           #{?messageType => ?updateProfiles,
                             ?profilesData => Acc}),
         {[Item|Items],[]};
@@ -384,7 +384,7 @@ get_active_user_profiles(UserId,FcmId) ->
         SortedProfiles
     end,
   ProfilesData = [get_contact_map(UserProfile) || {_Lsa,UserProfile} <- ProfilesToSend], 
-  downstream:create(FcmId,#{?messageType => ?getActiveUserProfiles,
+  tcp_socket:send_fcm(FcmId,#{?messageType => ?getActiveUserProfiles,
                             ?responseStatus => ?successResponse,
                             ?profilesData => ProfilesData}).
 
@@ -404,7 +404,7 @@ get_pending_tasks(UserId) ->
                        ?responseStatus => ?successResponse,
                        ?tasks => Tasks},
           % TODO If Message Grows Beyond 4KB
-          downstream:create(User#user.fcm_id,Response)
+          tcp_socket:send_fcm(User#user.fcm_id,Response)
       end
   end.
 handle_task_receipt(UserId,TaskId) ->
@@ -423,7 +423,7 @@ send_task_receipt(FcmId,TaskId) ->
   Receipt = #{?messageType => ?taskReceipt,
               ?responseStatus => ?successResponse,
               ?taskId => TaskId},
-  downstream:create(FcmId,Receipt).
+  tcp_socket:send_fcm(FcmId,Receipt).
 %---------- FCM Notifications -------------
 send_general_notification(FcmId,Title,Message) ->
   Notification = #{?messageType => ?fcmGeneralNotification,
@@ -431,21 +431,21 @@ send_general_notification(FcmId,Title,Message) ->
                    is_notification => true,
                    ?fcmNotificationTitle => Title,
                    ?fcmNotificationMessage => Message},
-  downstream:create(FcmId,Notification).
+  tcp_socket:send_fcm(FcmId,Notification).
 send_link_notification(FcmId,Title,Message,Url) ->
   Notification = #{?messageType => ?fcmGeneralNotification,
                    ?responseStatus => ?successResponse,
                    ?fcmNotificationTitle => Title,
                    ?fcmNotificationMessage => Message,
                    ?fcmNotificationUrl => Url},
-  downstream:create(FcmId,Notification).
+  tcp_socket:send_fcm(FcmId,Notification).
 send_update_notification(FcmId,Title,Message,Version) ->
   Notification = #{?messageType => ?fcmGeneralNotification,
                    ?responseStatus => ?successResponse,
                    ?fcmNotificationTitle => Title,
                    ?fcmNotificationMessage => Message,
                    ?fcmNotificationVersion => Version},
-  downstream:create(FcmId,Notification).
+  tcp_socket:send_fcm(FcmId,Notification).
 %------- Chats --------
 fetch_last_seen_at(FromUserId,UserId) ->
   case db:read_record(user,FromUserId) of
@@ -459,7 +459,7 @@ fetch_last_seen_at(FromUserId,UserId) ->
           Response = #{?messageType => ?fetchLastSeenAt,
                        ?responseStatus => ?successResponse,
                        ?lastSeenAt => User#user.last_seen_at},
-          downstream:create(FromUser#user.fcm_id,Response)
+          tcp_socket:send_fcm(FromUser#user.fcm_id,Response)
       end
   end.
 send_chat_message(FromUserId,
@@ -501,7 +501,7 @@ send_chat_message(FromUserId,
                                     type = ?deliverChatMessage,
                                     data = Delivery, 
                                     added_at = Now}),
-              downstream:create(ToUser#user.fcm_id,Delivery);
+              tcp_socket:send_fcm(ToUser#user.fcm_id,Delivery);
             _ ->
               ok
           end
@@ -532,7 +532,7 @@ chat_message_delivered_at(FromUserId,ToUserId,ChatMessageId,TimeStamp) ->
                                     type = ?chatMessageDeliveredAt,
                                     data = DeliveredAt,
                                     added_at = Now}),
-              downstream:create(ToUser#user.fcm_id,DeliveredAt);
+              tcp_socket:send_fcm(ToUser#user.fcm_id,DeliveredAt);
             _ ->
               ok
           end
