@@ -1,4 +1,4 @@
--module(tcp_socket).
+-module(fcm_socket).
 -behaviour(gen_statem).
 
 %% API.
@@ -38,7 +38,8 @@ init([]) ->
 
 connecting(info,connect,State) ->
   applog:verbose(?MODULE,"Connecting~n",[]),
-  case gen_tcp:connect({local, "/tmp/fcm.socket"}, 0, [local,binary,{active,true},{packet,line},{buffer,4096}]) of
+  UnixSocket = filesettings:get(unix_socket,"/tmp/fcm.socket"),
+  case gen_tcp:connect({local, UnixSocket}, 0, [local,binary,{active,true},{packet,line},{buffer,4096}]) of
     {ok,Socket} ->
       {next_state,connected,State#state{socket = Socket}};
     _ ->

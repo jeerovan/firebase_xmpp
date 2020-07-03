@@ -15,8 +15,8 @@ init([]) ->
              type => worker,
              shutdown => 5000
             },
-            #{id => tcp_socket,
-             start => {tcp_socket,start_link,[]},
+            #{id => fcm_socket,
+             start => {fcm_socket,start_link,[]},
              restart => permanent,
              type => worker,
              shutdown => 5000

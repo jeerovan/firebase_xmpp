@@ -20,7 +20,7 @@ restore_table(FileName) ->
   [datastore:write_record(Record) || Record <- Records].
 %--------- to be used with file:consult -----------
 write_terms(Filename, List) ->
-    Format = fun(Term) -> io_lib:format("~w.~n", [Term]) end,
+    Format = fun(Term) -> io_lib:format("~p.~n", [Term]) end,
     Text = lists:map(Format, List),
     file:write_file(Filename, Text).
 
