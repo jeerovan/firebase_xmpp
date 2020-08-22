@@ -37,13 +37,13 @@ init([]) ->
 	{ok, connecting, #state{}}.
 
 connecting(info,connect,State) ->
-  applog:verbose(?MODULE,"Connecting~n",[]),
   UnixSocket = filesettings:get(unix_socket,"/tmp/fcm.socket"),
   case gen_tcp:connect({local, UnixSocket}, 0, [local,binary,{active,true},{packet,line},{buffer,4096}]) of
     {ok,Socket} ->
+      applog:info(?MODULE,"Connected~n",[]),
       {next_state,connected,State#state{socket = Socket}};
     _ ->
-      {next_state,connecting,State,[{state_timeout,1000,connecting}]}
+      {next_state,connecting,State,[{state_timeout,5000,connecting}]}
   end;
 connecting(state_timeout,connecting,_State) ->
   self() ! connect,
@@ -73,11 +73,11 @@ connected(info,{tcp,_Socket,Data},_State) ->
   keep_state_and_data;
 connected(info,{tcp_closed,_Socket},State) ->
   applog:verbose(?MODULE,"Socket Closed, Connecting~n",[]),
-  {next_state,connecting,State,[{state_timeout,1000,connecting}]};
+  {next_state,connecting,State,[{state_timeout,5000,connecting}]};
 connected(info,{tcp_error,Socket,Reason},State) ->
   applog:error(?MODULE,"Tcp Error:~p~n",[Reason]),
   gen_tcp:close(Socket),
-  {next_state,connecting,State,[{state_timeout,1000,connecting}]};
+  {next_state,connecting,State,[{state_timeout,5000,connecting}]};
 connected(cast,{send,FcmId,Data},#state{socket = Socket}) ->
   Json = #{<<"fcm_id">> => FcmId,<<"data">> => Data},
   JsonData = jsx:encode(Json),
