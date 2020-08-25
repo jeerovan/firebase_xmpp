@@ -73,12 +73,12 @@ signature(Policy,Date) ->
 
 sha256_mac(K, S) ->
     try
-        crypto:hmac(sha256, K, S)
+        crypto:mac(hmac,sha256, K, S)
     catch
         error:undef ->
-            R0 = crypto:hmac_init(sha256, K),
-            R1 = crypto:hmac_update(R0, S),
-            crypto:hmac_final(R1)
+            R0 = crypto:mac_init(hmac,sha256, K),
+            R1 = crypto:mac_update(R0, S),
+            crypto:mac_final(R1)
     end.
 delete_media_file(Id) ->
   Bucket = list_to_binary(filesettings:get(s3_bucket,"")),
