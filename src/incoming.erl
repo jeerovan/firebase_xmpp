@@ -122,7 +122,7 @@ handle(?updateFcmId,FcmId,Json) ->
     true when TaskId =:= <<>>; UserId =:= <<>>; OldFcmId =:= <<>>; NewFcmId =:= <<>> ->
       ok;
     true ->
-      functions:update_fcm_id(UserId,OldFcmId,NewFcmId),
+      functions:update_fcm_id(OldFcmId,NewFcmId),
       functions:send_task_receipt(FcmId,TaskId)
   end;
 handle(?updateAgeGenderBio,FcmId,Json) ->
