@@ -191,7 +191,7 @@ verify_security_questions(FcmId,
                 true ->
                   ok;
                 false ->
-                  fcm_manager:update_registration_id(OldFcmId,FcmId)
+                  update_fcm_id(OldFcmId,FcmId)
               end
           end,
           maps:merge(#{?messageType => ?verifySecurityAnswers,
